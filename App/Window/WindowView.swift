@@ -190,8 +190,8 @@ struct WindowView: View {
         }
         // Apply padding similar to regular sidebar: remove padding when sidebar/AI is visible on that side
         // When sidebar is on left, AI appears on right (trailing); when sidebar is on right, AI appears on left (leading)
-        .padding(.trailing, (sidebarVisible && sidebarOnRight) || (aiVisible && sidebarOnLeft) ? 0 : 8)
-        .padding(.leading, (sidebarVisible && sidebarOnLeft) || (aiVisible && sidebarOnRight) ? 0 : 8)
+        .padding(.trailing, windowState.isFullScreen || (sidebarVisible && sidebarOnRight) || (aiVisible && sidebarOnLeft) ? 0 : 8)
+        .padding(.leading, windowState.isFullScreen || (sidebarVisible && sidebarOnLeft) || (aiVisible && sidebarOnRight) ? 0 : 8)
     }
 
     @ViewBuilder
@@ -216,13 +216,7 @@ struct WindowView: View {
 
     @ViewBuilder
     private func WebContent() -> some View {
-        let cornerRadius: CGFloat = {
-            if #available(macOS 26.0, *) {
-                return 8
-            } else {
-                return 8
-            }
-        }()
+        let cornerRadius: CGFloat = windowState.isFullScreen ? 0 : 8
         
         let hasTopBar = nookSettings.topBarAddressView
         
@@ -269,7 +263,7 @@ struct WindowView: View {
                     .allowsHitTesting(false)
             }
         }
-        .padding(.bottom, 8)
+        .padding(.bottom, windowState.isFullScreen ? 0 : 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

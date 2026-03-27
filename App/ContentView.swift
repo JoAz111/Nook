@@ -78,6 +78,8 @@ private struct WindowFocusBridge: NSViewRepresentable {
         let windowRegistry: WindowRegistry
         private weak var window: NSWindow?
         private var keyObserver: Any?
+        private var fullScreenEnterObserver: Any?
+        private var fullScreenExitObserver: Any?
 
         init(windowState: BrowserWindowState, windowRegistry: WindowRegistry) {
             self.windowState = windowState
@@ -101,10 +103,37 @@ private struct WindowFocusBridge: NSViewRepresentable {
                 }
             }
 
+            fullScreenEnterObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didEnterFullScreenNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in
+                    self.windowState.isFullScreen = true
+                }
+            }
+
+            fullScreenExitObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didExitFullScreenNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                guard let self else { return }
+                Task { @MainActor in
+                    self.windowState.isFullScreen = false
+                }
+            }
+
             if window.isKeyWindow {
                 Task { @MainActor in
                     windowRegistry.setActive(windowState)
                 }
+            }
+
+            // Sync initial fullscreen state
+            Task { @MainActor in
+                windowState.isFullScreen = window.styleMask.contains(.fullScreen)
             }
         }
 
@@ -112,6 +141,14 @@ private struct WindowFocusBridge: NSViewRepresentable {
             if let observer = keyObserver {
                 NotificationCenter.default.removeObserver(observer)
                 keyObserver = nil
+            }
+            if let observer = fullScreenEnterObserver {
+                NotificationCenter.default.removeObserver(observer)
+                fullScreenEnterObserver = nil
+            }
+            if let observer = fullScreenExitObserver {
+                NotificationCenter.default.removeObserver(observer)
+                fullScreenExitObserver = nil
             }
             window = nil
         }

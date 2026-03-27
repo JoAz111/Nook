@@ -88,6 +88,9 @@ class BrowserWindowState {
 
     // MARK: - Incognito/Ephemeral State
     
+    /// Whether this window is currently in macOS fullscreen mode
+    var isFullScreen: Bool = false
+
     /// Whether this window is an incognito/private browsing window
     var isIncognito: Bool = false
     
