@@ -2787,9 +2787,10 @@ final class ExtensionManager: NSObject, ObservableObject,
                 .optionalPermissionMatchPatterns,
             extensionDisplayName: displayName,
             onDecision: { grantedPerms, grantedMatches in
-                for p in permissions.union(
-                    extensionContext.webExtension.optionalPermissions
-                ) {
+                // Only update status for permissions that were actually requested
+                // in this prompt. Leave unrequested optional permissions at their
+                // current status — don't explicitly deny what wasn't asked about.
+                for p in permissions {
                     extensionContext.setPermissionStatus(
                         grantedPerms.contains(p)
                             ? .grantedExplicitly : .deniedExplicitly,
@@ -2797,10 +2798,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                     )
                 }
                 for m in extensionContext.webExtension
-                    .requestedPermissionMatchPatterns.union(
-                        extensionContext.webExtension
-                            .optionalPermissionMatchPatterns
-                    )
+                    .requestedPermissionMatchPatterns
                 {
                     extensionContext.setPermissionStatus(
                         grantedMatches.contains(m)
