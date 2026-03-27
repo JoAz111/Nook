@@ -91,11 +91,11 @@ class ZoomManager: ObservableObject {
         applyZoom(1.0, to: webView, domain: domain, tabId: tabId)
     }
 
-    /// Load saved zoom level for a domain and apply to WebView (only for existing tabs, not new tabs)
+    /// Load saved zoom level for a domain and apply to WebView
     func loadSavedZoom(for webView: WKWebView, domain: String, tabId: UUID) {
-        // Always start new tabs at 100% (actual size)
-        // Don't load saved zoom for new tabs - this ensures sites always open at actual size
-        applyZoom(1.0, to: webView, domain: domain, tabId: tabId)
+        let savedZoom = getZoomLevel(for: domain)
+        let zoomLevel = savedZoom > 0 ? savedZoom : 1.0
+        applyZoom(zoomLevel, to: webView, domain: domain, tabId: tabId)
         currentDomain = domain
     }
 
