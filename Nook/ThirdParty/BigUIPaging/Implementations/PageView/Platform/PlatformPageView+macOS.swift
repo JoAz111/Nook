@@ -148,7 +148,7 @@ extension PlatformPageView {
             isAnimating = true
 
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.18
+                context.duration = 0.05
                 // Snappy ease-out: fast initial movement, smooth settle
                 context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
                 pc.animator().selectedIndex = newIndex
@@ -266,7 +266,7 @@ extension PlatformPageView {
             pageController.arrangedObjects = arrangedObjects
             if animated {
                 NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.18
+                    context.duration = 0.05
                     context.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
                     pageController.animator().selectedIndex = selectedIndex
                 } completionHandler: {
