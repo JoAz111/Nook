@@ -2884,7 +2884,13 @@ extension Tab: WKScriptMessageHandler {
             
 
         case "historyStateDidChange":
+            // SECURITY: Only accept history state changes from the main frame
+            guard message.frameInfo.isMainFrame else { break }
             if let href = message.body as? String, let url = URL(string: href) {
+                // SECURITY: Validate the reported URL matches the webView's actual URL
+                // to prevent page JS from spoofing the displayed URL
+                guard let actualURL = message.webView?.url,
+                      url.host == actualURL.host && url.scheme == actualURL.scheme else { break }
                 DispatchQueue.main.async {
                     if self.url.absoluteString != url.absoluteString {
                         self.url = url
@@ -2902,6 +2908,8 @@ extension Tab: WKScriptMessageHandler {
             }
 
         case "NookIdentity":
+            // SECURITY: Only accept identity requests from the main frame
+            guard message.frameInfo.isMainFrame else { break }
             handleOAuthRequest(message: message)
             
         case "nookShortcutDetect":

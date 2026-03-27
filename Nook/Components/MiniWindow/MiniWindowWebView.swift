@@ -414,11 +414,16 @@ extension MiniWindowWebView.Coordinator: WKUIDelegate {
     ) {
         print("🔐 [MiniWindow] Media capture authorization requested for type: \(type.rawValue) from origin: \(origin)")
 
+        // SECURITY: Use exact match or suffix match (with leading dot) to prevent
+        // lookalike domains like "evil-accounts.google.com.attacker.tld"
         let knownOAuthDomains = [
             "accounts.google.com", "login.microsoftonline.com", "github.com",
             "appleid.apple.com", "auth0.com", "okta.com", "auth.cloudflare.com"
         ]
-        let isKnownOAuth = knownOAuthDomains.contains { origin.host.contains($0) }
+        let host = origin.host.lowercased()
+        let isKnownOAuth = knownOAuthDomains.contains { domain in
+            host == domain || host.hasSuffix("." + domain)
+        }
         decisionHandler(isKnownOAuth ? .grant : .deny)
     }
 

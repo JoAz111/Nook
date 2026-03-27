@@ -2115,17 +2115,13 @@ final class ExtensionManager: NSObject, ObservableObject,
 
                 Self.logger.info("Loading '\(webExtension.displayName ?? entity.name, privacy: .public)' MV\(webExtension.manifestVersion) hasBackground=\(webExtension.hasBackgroundContent)")
 
-                // Grant all permissions
+                // Grant declared (non-optional) permissions only.
+                // Optional permissions should be granted at runtime via
+                // chrome.permissions.request() with user consent, not at load time.
                 for p in webExtension.requestedPermissions {
                     extensionContext.setPermissionStatus(.grantedExplicitly, for: p)
                 }
-                for p in webExtension.optionalPermissions {
-                    extensionContext.setPermissionStatus(.grantedExplicitly, for: p)
-                }
                 for m in webExtension.allRequestedMatchPatterns {
-                    extensionContext.setPermissionStatus(.grantedExplicitly, for: m)
-                }
-                for m in webExtension.optionalPermissionMatchPatterns {
                     extensionContext.setPermissionStatus(.grantedExplicitly, for: m)
                 }
 
@@ -2291,7 +2287,17 @@ final class ExtensionManager: NSObject, ObservableObject,
     @available(macOS 15.4, *)
     func grantExtensionAccessToURL(_ url: URL) {
         for (_, ctx) in extensionContexts {
-            ctx.setPermissionStatus(.grantedExplicitly, for: url)
+            // SECURITY: Only grant access if the URL matches the extension's
+            // declared host permissions or content script match patterns.
+            // This preserves host-permission isolation instead of granting
+            // every extension access to every URL the user visits.
+            let matchPatterns = ctx.webExtension.allRequestedMatchPatterns
+            let hasMatchingPattern = matchPatterns.contains { pattern in
+                pattern.matchesURL(url)
+            }
+            if hasMatchingPattern {
+                ctx.setPermissionStatus(.grantedExplicitly, for: url)
+            }
         }
     }
 
