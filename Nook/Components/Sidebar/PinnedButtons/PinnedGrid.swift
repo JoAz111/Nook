@@ -126,7 +126,16 @@ struct PinnedGrid: View {
                                         icon: tab.favicon,
                                         isActive: isActive,
                                         onActivate: { browserManager.selectTab(tab, in: windowState) },
-                                        onClose: { tab.unloadWebView() },
+                                        onClose: {
+                                            // If this is the active tab, select a different one first
+                                            if browserManager.currentTab(for: windowState)?.id == tab.id {
+                                                let allTabs = browserManager.tabManager.essentialTabs(for: effectiveProfileId)
+                                                if let next = allTabs.first(where: { $0.id != tab.id }) {
+                                                    browserManager.selectTab(next, in: windowState)
+                                                }
+                                            }
+                                            tab.unloadWebView()
+                                        },
                                         onRemovePin: { browserManager.tabManager.unpinTab(tab) },
                                         onSplitRight: { browserManager.splitManager.enterSplit(with: tab, placeOn: .right, in: windowState) },
                                         onSplitLeft: { browserManager.splitManager.enterSplit(with: tab, placeOn: .left, in: windowState) }

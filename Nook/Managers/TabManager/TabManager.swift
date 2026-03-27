@@ -709,6 +709,8 @@ class TabManager: ObservableObject {
         let spacePinnedClosing = spacePinnedTabs[id] ?? []
         for tab in closing + spacePinnedClosing {
             if currentTab?.id == tab.id { currentTab = nil }
+            browserManager?.splitManager.handleTabClosure(tab.id)
+            tab.unloadWebView()
             browserManager?.compositorManager.unloadTab(tab)
             browserManager?.webViewCoordinator?.removeAllWebViews(for: tab)
             if #available(macOS 15.5, *) {

@@ -29,6 +29,9 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
     // Track Option key state for Peek functionality
     var isOptionKeyDown: Bool = false
 
+    /// URL before the current provisional navigation, used for rollback on failure
+    private var preNavigationURL: URL?
+
     // MARK: - OAuth Flow State
     /// Whether this tab is hosting an OAuth/sign-in flow popup
     var isOAuthFlow: Bool = false
@@ -2421,9 +2424,6 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
 extension Tab: WKNavigationDelegate {
 
     // MARK: - Loading Start
-    /// URL before the current provisional navigation, used for rollback on failure
-    private var preNavigationURL: URL?
-
     public func webView(
         _ webView: WKWebView,
         didStartProvisionalNavigation navigation: WKNavigation!
