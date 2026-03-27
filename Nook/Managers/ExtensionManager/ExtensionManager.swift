@@ -2293,7 +2293,7 @@ final class ExtensionManager: NSObject, ObservableObject,
             // every extension access to every URL the user visits.
             let matchPatterns = ctx.webExtension.allRequestedMatchPatterns
             let hasMatchingPattern = matchPatterns.contains { pattern in
-                pattern.matchesURL(url)
+                pattern.matches(url)
             }
             if hasMatchingPattern {
                 ctx.setPermissionStatus(.grantedExplicitly, for: url)
@@ -2382,19 +2382,13 @@ final class ExtensionManager: NSObject, ObservableObject,
         let extName = extensionContext.webExtension.displayName ?? "?"
         Self.logger.info("presentActionPopup delegate called for '\(extName, privacy: .public)'")
 
-        // Grant ALL the extension's requested + optional permissions so the popup
-        // can use chrome.tabs, chrome.runtime, etc. without hanging.
-        // allRequestedMatchPatterns includes content_scripts patterns, not just host_permissions.
+        // Grant declared (non-optional) permissions so the popup can use
+        // chrome.tabs, chrome.runtime, etc. without hanging.
+        // Optional permissions should be granted at runtime via chrome.permissions.request().
         for p in extensionContext.webExtension.requestedPermissions {
             extensionContext.setPermissionStatus(.grantedExplicitly, for: p)
         }
-        for p in extensionContext.webExtension.optionalPermissions {
-            extensionContext.setPermissionStatus(.grantedExplicitly, for: p)
-        }
         for m in extensionContext.webExtension.allRequestedMatchPatterns {
-            extensionContext.setPermissionStatus(.grantedExplicitly, for: m)
-        }
-        for m in extensionContext.webExtension.optionalPermissionMatchPatterns {
             extensionContext.setPermissionStatus(.grantedExplicitly, for: m)
         }
 

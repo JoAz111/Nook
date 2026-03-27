@@ -2887,10 +2887,13 @@ extension Tab: WKScriptMessageHandler {
             // SECURITY: Only accept history state changes from the main frame
             guard message.frameInfo.isMainFrame else { break }
             if let href = message.body as? String, let url = URL(string: href) {
-                // SECURITY: Validate the reported URL matches the webView's actual URL
-                // to prevent page JS from spoofing the displayed URL
+                // SECURITY: Validate the reported URL origin matches the webView's actual URL
+                // to prevent page JS from spoofing the displayed URL.
+                // Compare scheme, host, AND port for full origin safety.
                 guard let actualURL = message.webView?.url,
-                      url.host == actualURL.host && url.scheme == actualURL.scheme else { break }
+                      url.host == actualURL.host
+                        && url.scheme == actualURL.scheme
+                        && url.port == actualURL.port else { break }
                 DispatchQueue.main.async {
                     if self.url.absoluteString != url.absoluteString {
                         self.url = url
@@ -2944,12 +2947,29 @@ extension Tab: WKScriptMessageHandler {
             url: url.absoluteString, in: browserManager?.tabManager.currentSpace)
     }
 
+    /// Known OAuth provider hosts that may be targeted by the identity bridge
+    private static let allowedOAuthHosts: Set<String> = [
+        "accounts.google.com", "login.microsoftonline.com", "github.com",
+        "appleid.apple.com", "auth0.com", "okta.com", "auth.cloudflare.com",
+        "login.live.com", "id.twitch.tv", "discord.com", "accounts.spotify.com",
+        "www.facebook.com", "api.twitter.com", "slack.com"
+    ]
+
     private func handleOAuthRequest(message: WKScriptMessage) {
         guard let dict = message.body as? [String: Any],
             let urlString = dict["url"] as? String,
             let url = URL(string: urlString)
         else {
             print("❌ [Tab] Invalid OAuth request: missing or invalid URL")
+            return
+        }
+
+        // SECURITY: Only allow auth flows to known OAuth providers
+        let targetHost = url.host?.lowercased() ?? ""
+        guard Self.allowedOAuthHosts.contains(where: { domain in
+            targetHost == domain || targetHost.hasSuffix("." + domain)
+        }) else {
+            print("⚠️ [Tab] Blocked OAuth request to untrusted host: \(targetHost)")
             return
         }
         let interactive = dict["interactive"] as? Bool ?? true
