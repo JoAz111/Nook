@@ -2399,6 +2399,9 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
 extension Tab: WKNavigationDelegate {
 
     // MARK: - Loading Start
+    /// URL before the current provisional navigation, used for rollback on failure
+    private var preNavigationURL: URL?
+
     public func webView(
         _ webView: WKWebView,
         didStartProvisionalNavigation navigation: WKNavigation!
@@ -2412,22 +2415,21 @@ extension Tab: WKNavigationDelegate {
         }
 
         if let newURL = webView.url {
-            // Only reset for actual URL changes, not just reloads
             if newURL.absoluteString != self.url.absoluteString {
                 hasAudioContent = false
                 hasPlayingAudio = false
-                // Note: isAudioMuted is preserved to maintain user's mute preference
                 print(
                     "🔄 [Tab] Swift reset audio tracking for navigation to: \(newURL.absoluteString)"
                 )
-                // Reset sampled domain to force resampling on new page
                 if let newDomain = extractDomain(from: newURL),
                    newDomain != lastSampledDomain {
                     lastSampledDomain = nil
                 }
-                // Update URL but don't persist yet - wait for navigation to complete
+                // Save current URL for rollback if provisional navigation fails
+                preNavigationURL = self.url
                 self.url = newURL
             } else {
+                preNavigationURL = nil
                 self.url = newURL
             }
         }
@@ -2439,6 +2441,7 @@ extension Tab: WKNavigationDelegate {
         didCommit navigation: WKNavigation!
     ) {
         print("🌐 [Tab] didCommit navigation for: \(webView.url?.absoluteString ?? "unknown")")
+        preNavigationURL = nil  // Navigation committed successfully, no rollback needed
         loadingState = .didCommit
         if #available(macOS 15.5, *) {
             ExtensionManager.shared.notifyTabPropertiesChanged(self, properties: [.loading])
@@ -2589,6 +2592,12 @@ extension Tab: WKNavigationDelegate {
             "💥 [Tab] didFailProvisionalNavigation for: \(webView.url?.absoluteString ?? "unknown")")
         print("   Error: \(error.localizedDescription)")
         loadingState = .didFailProvisionalNavigation(error)
+
+        // Rollback URL to pre-navigation state since the navigation never committed
+        if let previousURL = preNavigationURL {
+            self.url = previousURL
+            preNavigationURL = nil
+        }
 
         // Set connection error favicon
         Task { @MainActor in
