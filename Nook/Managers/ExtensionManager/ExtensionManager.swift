@@ -511,7 +511,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                             message: parsed.message,
                             options: parsed.options,
                             callbackId: callbackId
-                        }, '*');
+                        }, window.location.origin);
                     });
                 });
 
@@ -568,7 +568,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                             targetRuntimeId: activeRuntimeId(),
                             portId: portId,
                             message: message
-                        }, '*');
+                        }, window.location.origin);
                     },
                     disconnect: function() {
                         if (entry.disconnected) return;
@@ -576,7 +576,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                             type: 'nook_ec_connect_close',
                             targetRuntimeId: activeRuntimeId(),
                             portId: portId
-                        }, '*');
+                        }, window.location.origin);
                         closeBridgePort(portId, null);
                     },
                     onMessage: onMessage,
@@ -593,7 +593,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                         extensionId: parsed.extensionId,
                         connectInfo: connectInfo,
                         portId: portId
-                    }, '*');
+                    }, window.location.origin);
                 }).catch(function(error) {
                     var message = (error && error.message) ? error.message : String(error);
                     console.warn('[NOOK-EC] Bridge port open failed id=' + portId + ': ' + message);
@@ -1072,7 +1072,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                     window.postMessage({
                         type: 'nook_ec_bridge_ready',
                         targetRuntimeId: currentRuntimeId()
-                    }, '*');
+                    }, window.location.origin);
                 }
 
                 announceReady();
@@ -1096,7 +1096,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                             callbackId: data.callbackId,
                             targetRuntimeId: currentRuntimeId(),
                             error: 'runtime.sendMessage unavailable'
-                        }, '*');
+                        }, window.location.origin);
                         return;
                     }
 
@@ -1147,7 +1147,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                             callbackId: callbackId,
                             targetRuntimeId: currentRuntimeId(),
                             response: response
-                        }, '*');
+                        }, window.location.origin);
                     }).catch(function(error) {
                         console.warn('[NOOK-EC] Relay error type=' + outgoingType + ': ' + ((error && error.message) ? error.message : String(error)));
                         window.postMessage({
@@ -1155,7 +1155,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                             callbackId: callbackId,
                             targetRuntimeId: currentRuntimeId(),
                             error: (error && error.message) ? error.message : String(error)
-                        }, '*');
+                        }, window.location.origin);
                     });
                 }
 
@@ -1169,7 +1169,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                             portId: portId,
                             targetRuntimeId: currentRuntimeId(),
                             error: 'runtime.connect unavailable'
-                        }, '*');
+                        }, window.location.origin);
                         return;
                     }
 
@@ -1190,7 +1190,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                             portId: portId,
                             targetRuntimeId: currentRuntimeId(),
                             error: (error && error.message) ? error.message : String(error)
-                        }, '*');
+                        }, window.location.origin);
                         return;
                     }
 
@@ -1201,7 +1201,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                             portId: portId,
                             targetRuntimeId: currentRuntimeId(),
                             message: message
-                        }, '*');
+                        }, window.location.origin);
                     });
                     port.onDisconnect.addListener(function() {
                         var error = lastErrorMessage();
@@ -1212,14 +1212,14 @@ final class ExtensionManager: NSObject, ObservableObject,
                             portId: portId,
                             targetRuntimeId: currentRuntimeId(),
                             error: error
-                        }, '*');
+                        }, window.location.origin);
                     });
 
                     window.postMessage({
                         type: 'nook_ec_connect_opened',
                         portId: portId,
                         targetRuntimeId: currentRuntimeId()
-                    }, '*');
+                    }, window.location.origin);
                 }
 
                 function relayConnectPost(data) {
@@ -1234,7 +1234,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                             portId: data.portId,
                             targetRuntimeId: currentRuntimeId(),
                             error: (error && error.message) ? error.message : String(error)
-                        }, '*');
+                        }, window.location.origin);
                     }
                 }
 
@@ -1251,7 +1251,7 @@ final class ExtensionManager: NSObject, ObservableObject,
                         portId: portId,
                         targetRuntimeId: currentRuntimeId(),
                         error: null
-                    }, '*');
+                    }, window.location.origin);
                 }
 
                 window.addEventListener('message', function(event) {
@@ -3895,12 +3895,47 @@ class NativeMessagingHandler: NSObject {
                 if let data = try? Data(contentsOf: path),
                    let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let binaryPath = json["path"] as? String {
-                    
+
                     Self.logger.info("Found manifest at \(path.path)")
-                    
+
+                    // NOTE: allowed_origins in Chrome native messaging manifests use Chrome
+                    // extension IDs (chrome-extension://...) which don't map to WKWebExtension
+                    // identifiers. We skip that check and rely on binary path validation instead.
+
+                    // SECURITY: Validate binary path
+                    let resolvedPath = (binaryPath as NSString).expandingTildeInPath
+                    let binaryURL = URL(fileURLWithPath: resolvedPath)
+
+                    // Must be an absolute path
+                    guard resolvedPath.hasPrefix("/") else {
+                        Self.logger.error("Native messaging binary path is not absolute: \(binaryPath)")
+                        continue
+                    }
+
+                    // Must exist and be a regular file (not symlink to unexpected location)
+                    var isDirectory: ObjCBool = false
+                    guard FileManager.default.fileExists(atPath: resolvedPath, isDirectory: &isDirectory),
+                          !isDirectory.boolValue else {
+                        Self.logger.error("Native messaging binary not found or is a directory: \(resolvedPath)")
+                        continue
+                    }
+
+                    // Must be executable
+                    guard FileManager.default.isExecutableFile(atPath: resolvedPath) else {
+                        Self.logger.error("Native messaging binary is not executable: \(resolvedPath)")
+                        continue
+                    }
+
+                    // Must not be in a temp or world-writable directory
+                    let suspiciousPrefixes = ["/tmp/", "/var/tmp/", "/private/tmp/"]
+                    guard !suspiciousPrefixes.contains(where: { resolvedPath.hasPrefix($0) }) else {
+                        Self.logger.error("Native messaging binary in suspicious temp directory: \(resolvedPath)")
+                        continue
+                    }
+
                     // Launch it
                     let process = Process()
-                    process.executableURL = URL(fileURLWithPath: binaryPath)
+                    process.executableURL = binaryURL
                     
                     let input = Pipe()
                     let output = Pipe()

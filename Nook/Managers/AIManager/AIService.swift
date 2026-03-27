@@ -234,6 +234,38 @@ class AIService {
         // Check if it's a browser tool
         if let browserToolExecutor = browserToolExecutor,
            BrowserToolsConfig.allToolNames.contains(toolCall.name) {
+
+            let config = configService.browserToolsConfig
+
+            // Enforce execution mode — disabled tools should never run
+            if config.executionMode == .disabled {
+                return AIToolResult(toolCallId: toolCall.id, toolName: toolCall.name, content: "Browser tools are disabled.", isError: true)
+            }
+
+            // Block tools not in the enabled set
+            if !config.enabledTools.contains(toolCall.name) {
+                return AIToolResult(toolCallId: toolCall.id, toolName: toolCall.name, content: "Tool '\(toolCall.name)' is not enabled.", isError: true)
+            }
+
+            // Dangerous tools always require confirmation regardless of mode
+            let dangerousTools: Set<String> = ["executeJavaScript", "clickElement", "navigateToURL"]
+            let needsConfirmation = config.executionMode == .askBeforeExecuting || dangerousTools.contains(toolCall.name)
+
+            if needsConfirmation {
+                let approved = await MainActor.run {
+                    let alert = NSAlert()
+                    alert.messageText = "AI wants to use: \(toolCall.name)"
+                    alert.informativeText = "Arguments: \(toolCall.arguments.prefix(500))\n\nAllow this action?"
+                    alert.alertStyle = .warning
+                    alert.addButton(withTitle: "Allow")
+                    alert.addButton(withTitle: "Deny")
+                    return alert.runModal() == .alertFirstButtonReturn
+                }
+                if !approved {
+                    return AIToolResult(toolCallId: toolCall.id, toolName: toolCall.name, content: "User denied execution of \(toolCall.name).", isError: true)
+                }
+            }
+
             do {
                 return try await browserToolExecutor.execute(toolCall)
             } catch {

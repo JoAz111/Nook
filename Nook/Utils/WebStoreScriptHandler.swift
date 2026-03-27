@@ -18,36 +18,53 @@ final class WebStoreScriptHandler: NSObject, WKScriptMessageHandler {
         super.init()
     }
     
+    /// Allowed origins that may trigger extension installation
+    private static let allowedHosts: Set<String> = [
+        "chromewebstore.google.com",
+        "chrome.google.com"
+    ]
+
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "nookWebStore" else { return }
-        
+
+        // SECURITY: Only accept install messages from the Chrome Web Store
+        guard let pageURL = message.frameInfo.request.url ?? message.webView?.url,
+              let host = pageURL.host?.lowercased(),
+              Self.allowedHosts.contains(host) else {
+            print("⚠️ [WebStore] Blocked install request from untrusted origin: \(message.webView?.url?.host ?? "unknown")")
+            return
+        }
+
         guard let body = message.body as? [String: Any],
               let action = body["action"] as? String,
               action == "installExtension",
               let extensionId = body["extensionId"] as? String else {
             return
         }
-        
+
+        // SECURITY: Validate extensionId format (Chrome extension IDs are 32 lowercase a-p chars)
+        guard extensionId.range(of: "^[a-p]{32}$", options: .regularExpression) != nil else {
+            print("⚠️ [WebStore] Blocked install request with invalid extensionId: \(extensionId.prefix(50))")
+            return
+        }
+
         // Install the extension
         if #available(macOS 15.5, *), let extensionManager = browserManager?.extensionManager {
             extensionManager.installFromWebStore(extensionId: extensionId) { result in
                 Task { @MainActor in
-                    // Notify the web page of completion
                     let success = if case .success = result { true } else { false }
-                    let script = """
-                    window.dispatchEvent(new CustomEvent('nookInstallComplete', { 
-                        detail: { 
-                            success: \(success),
-                            extensionId: '\(extensionId)'
-                        } 
-                    }));
-                    """
-                    
+
+                    // SECURITY: Use parameterized JS to prevent XSS via extensionId
                     if let webView = message.webView {
+                        let safeScript = """
+                        window.dispatchEvent(new CustomEvent('nookInstallComplete', {
+                            detail: { success: params.success, extensionId: params.extensionId }
+                        }));
+                        """
                         do {
                             _ = try await webView.callAsyncJavaScript(
-                                script,
-                                arguments: [:],
+                                safeScript,
+                                arguments: ["params": ["success": success, "extensionId": extensionId]],
                                 in: nil,
                                 contentWorld: .page
                             )
@@ -55,7 +72,7 @@ final class WebStoreScriptHandler: NSObject, WKScriptMessageHandler {
                             print("❌ Failed to dispatch install completion event: \(error)")
                         }
                     }
-                    
+
                     switch result {
                     case .success(let ext):
                         self.showSuccessNotification(extensionName: ext.name)
