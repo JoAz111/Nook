@@ -904,15 +904,21 @@ class TabManager: ObservableObject {
         }
     }
     func moveTabToFolder(tab: Tab, folderId: UUID) {
+        // Resolve spaceId — fall back to current space for globally-pinned tabs
+        guard let spaceId = tab.spaceId ?? currentSpace?.id else {
+            print("⚠️ [TabManager] Cannot move tab to folder: no spaceId and no current space")
+            return
+        }
+
         let newTab = tab
         removeFromCurrentContainer(newTab)
         newTab.folderId = folderId
+        newTab.spaceId = spaceId
         newTab.isSpacePinned = true
-        var sp = spacePinnedTabs[tab.spaceId!] ?? []
-        sp.append(tab)
-        // Reindex
+        var sp = spacePinnedTabs[spaceId] ?? []
+        sp.append(newTab)
         for (i, t) in sp.enumerated() { t.index = i }
-        setSpacePinnedTabs(sp, for: tab.spaceId!)
+        setSpacePinnedTabs(sp, for: spaceId)
     }
 
     // MARK: - Tab Management (Normal within current space)
