@@ -2276,10 +2276,10 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
                 .largest()
 
             if let faviconImage = favicon.image {
-                let nsImage = faviconImage.image
+                let nsImage = Self.normalizeFavicon(faviconImage.image)
                 let swiftUIImage = SwiftUI.Image(nsImage: nsImage)
 
-                // Cache the favicon (both in memory and on disk)
+                // Cache the normalized favicon (both in memory and on disk)
                 Self.cacheFavicon(swiftUIImage, for: cacheKey)
                 Self.saveFaviconToDisk(nsImage, for: cacheKey)
                 print("💾 [Favicon] Cached favicon for: \(cacheKey)")
@@ -2358,6 +2358,25 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
         return (faviconCache.count, Array(faviconCache.keys))
     }
 
+    /// Normalize a favicon to a consistent 64x64 size with high-quality interpolation.
+    /// Prevents blurry rendering when small favicons (16x16) are scaled up in the UI.
+    private static let faviconNormalizedSize: CGFloat = 64
+
+    private static func normalizeFavicon(_ source: NSImage) -> NSImage {
+        let size = NSSize(width: faviconNormalizedSize, height: faviconNormalizedSize)
+        let normalized = NSImage(size: size)
+        normalized.lockFocus()
+        NSGraphicsContext.current?.imageInterpolation = .high
+        source.draw(
+            in: NSRect(origin: .zero, size: size),
+            from: NSRect(origin: .zero, size: source.size),
+            operation: .copy,
+            fraction: 1.0
+        )
+        normalized.unlockFocus()
+        return normalized
+    }
+
     // MARK: - Persistent Storage Helpers
     private static func saveFaviconToDisk(_ nsImage: NSImage, for key: String) {
         let fileURL = faviconCacheDirectory.appendingPathComponent("\(key).png")
@@ -2380,7 +2399,10 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
             return nil
         }
 
-        return SwiftUI.Image(nsImage: nsImage)
+        // Normalize on load to ensure consistent sizing for cached favicons
+        // from before normalization was added
+        let normalized = normalizeFavicon(nsImage)
+        return SwiftUI.Image(nsImage: normalized)
     }
 
     private static func removeFaviconFromDisk(for key: String) {
