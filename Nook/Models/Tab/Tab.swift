@@ -835,7 +835,7 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
         } else {
             // Regular URL loading with aggressive caching
             var request = URLRequest(url: newURL)
-            request.cachePolicy = .returnCacheDataElseLoad
+            request.cachePolicy = .useProtocolCachePolicy
             request.timeoutInterval = 30.0
             print("🚀 [Tab] Loading URL with cache policy: \(request.cachePolicy.rawValue)")
             activeWebView?.load(request)
