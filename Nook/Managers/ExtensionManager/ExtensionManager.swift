@@ -2748,14 +2748,10 @@ final class ExtensionManager: NSObject, ObservableObject,
                         requestedHostPermissions: reqHosts,
                         optionalHostPermissions: optHosts,
                         onGrant: {
-                            let allPerms = requestedPermissions.union(
-                                optionalPermissions
-                            )
-                            let allHosts = requestedMatches.union(
-                                optionalMatches
-                            )
+                            // SECURITY: Only grant what was actually requested,
+                            // not the entire optional permission set
                             bm.closeDialog()
-                            onDecision(allPerms, allHosts)
+                            onDecision(requestedPermissions, requestedMatches)
                         },
                         onDeny: {
                             bm.closeDialog()

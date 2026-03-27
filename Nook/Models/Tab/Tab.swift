@@ -3495,7 +3495,8 @@ extension Tab: WKUIDelegate {
             "🔐 [Tab] Media capture authorization requested for type: \(type.rawValue) from origin: \(origin)"
         )
 
-        decisionHandler(.grant)
+        // SECURITY: Prompt the user for per-site camera/mic consent instead of auto-granting
+        decisionHandler(.prompt)
     }
 }
 
