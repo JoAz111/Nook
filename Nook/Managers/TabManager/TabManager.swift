@@ -704,11 +704,16 @@ class TabManager: ObservableObject {
         guard let idx = spaces.firstIndex(where: { $0.id == id }) else {
             return
         }
-        // Move tabs out or close them; here we close normal tabs of the space
+        // Close all tabs in the space, cleaning up WebViews and notifying extensions
         let closing = tabsBySpace[id] ?? []
         let spacePinnedClosing = spacePinnedTabs[id] ?? []
-        for t in closing + spacePinnedClosing {
-            if currentTab?.id == t.id { currentTab = nil }
+        for tab in closing + spacePinnedClosing {
+            if currentTab?.id == tab.id { currentTab = nil }
+            browserManager?.compositorManager.unloadTab(tab)
+            browserManager?.webViewCoordinator?.removeAllWebViews(for: tab)
+            if #available(macOS 15.5, *) {
+                ExtensionManager.shared.notifyTabClosed(tab)
+            }
         }
         setTabs([], for: id)
         setSpacePinnedTabs([], for: id)
