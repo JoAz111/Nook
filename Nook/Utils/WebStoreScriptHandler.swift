@@ -18,19 +18,20 @@ final class WebStoreScriptHandler: NSObject, WKScriptMessageHandler {
         super.init()
     }
     
-    /// Allowed origins that may trigger extension installation
-    private static let allowedHosts: Set<String> = [
-        "chromewebstore.google.com",
-        "chrome.google.com"
-    ]
+    /// Check if a URL is a Chrome Web Store page (matches BrowserConfiguration.isChromeWebStore)
+    private static func isWebStorePage(_ url: URL) -> Bool {
+        let host = url.host?.lowercased() ?? ""
+        let path = url.path.lowercased()
+        return (host == "chromewebstore.google.com") ||
+               (host == "chrome.google.com" && path.contains("webstore"))
+    }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "nookWebStore" else { return }
 
-        // SECURITY: Only accept install messages from the Chrome Web Store
+        // SECURITY: Only accept install messages from Chrome Web Store pages
         guard let pageURL = message.frameInfo.request.url ?? message.webView?.url,
-              let host = pageURL.host?.lowercased(),
-              Self.allowedHosts.contains(host) else {
+              Self.isWebStorePage(pageURL) else {
             print("⚠️ [WebStore] Blocked install request from untrusted origin: \(message.webView?.url?.host ?? "unknown")")
             return
         }

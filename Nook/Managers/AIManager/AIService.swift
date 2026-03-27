@@ -276,6 +276,21 @@ class AIService {
         // Check if it's an MCP tool
         if let mcpManager = mcpManager,
            toolCall.name.contains(".") {
+
+            // MCP tools can launch local executables — require confirmation
+            let mcpApproved = await MainActor.run {
+                let alert = NSAlert()
+                alert.messageText = "AI wants to use MCP tool: \(toolCall.name)"
+                alert.informativeText = "Arguments: \(toolCall.arguments.prefix(500))\n\nMCP tools may access local resources. Allow?"
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "Allow")
+                alert.addButton(withTitle: "Deny")
+                return alert.runModal() == .alertFirstButtonReturn
+            }
+            guard mcpApproved else {
+                return AIToolResult(toolCallId: toolCall.id, toolName: toolCall.name, content: "User denied MCP tool execution.", isError: true)
+            }
+
             let parts = toolCall.name.split(separator: ".", maxSplits: 1)
             if parts.count == 2 {
                 let serverId = String(parts[0])

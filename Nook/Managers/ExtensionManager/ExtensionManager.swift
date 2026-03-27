@@ -3903,16 +3903,19 @@ class NativeMessagingHandler: NSObject {
                     // identifiers. We skip that check and rely on binary path validation instead.
 
                     // SECURITY: Validate binary path
-                    let resolvedPath = (binaryPath as NSString).expandingTildeInPath
-                    let binaryURL = URL(fileURLWithPath: resolvedPath)
+                    let expandedPath = (binaryPath as NSString).expandingTildeInPath
 
                     // Must be an absolute path
-                    guard resolvedPath.hasPrefix("/") else {
+                    guard expandedPath.hasPrefix("/") else {
                         Self.logger.error("Native messaging binary path is not absolute: \(binaryPath)")
                         continue
                     }
 
-                    // Must exist and be a regular file (not symlink to unexpected location)
+                    // Resolve symlinks before all checks to prevent bypass
+                    let resolvedPath = (expandedPath as NSString).resolvingSymlinksInPath
+                    let binaryURL = URL(fileURLWithPath: resolvedPath)
+
+                    // Must exist and be a regular file
                     var isDirectory: ObjCBool = false
                     guard FileManager.default.fileExists(atPath: resolvedPath, isDirectory: &isDirectory),
                           !isDirectory.boolValue else {
@@ -3926,10 +3929,10 @@ class NativeMessagingHandler: NSObject {
                         continue
                     }
 
-                    // Must not be in a temp or world-writable directory
+                    // Must not be in a temp or world-writable directory (checked after symlink resolution)
                     let suspiciousPrefixes = ["/tmp/", "/var/tmp/", "/private/tmp/"]
                     guard !suspiciousPrefixes.contains(where: { resolvedPath.hasPrefix($0) }) else {
-                        Self.logger.error("Native messaging binary in suspicious temp directory: \(resolvedPath)")
+                        Self.logger.error("Native messaging binary resolves to suspicious temp directory: \(resolvedPath)")
                         continue
                     }
 

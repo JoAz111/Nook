@@ -164,7 +164,7 @@ final class AuthenticationManager: NSObject {
         }
 
         tab.finishIdentityFlow(requestId: request.requestId, with: .success(url))
-        tab.activeWebView.reload()
+        tab.activeWebView?.reload()
     }
 
     private func cancelActiveIdentityFlow() {
@@ -196,7 +196,7 @@ final class AuthenticationManager: NSObject {
             displayHost = host
         } else if let realm = challenge.protectionSpace.realm, !realm.isEmpty {
             displayHost = realm
-        } else if let url = tab.activeWebView.url {
+        } else if let url = tab.activeWebView?.url {
             displayHost = url.host ?? url.absoluteString
         } else {
             displayHost = "this site"

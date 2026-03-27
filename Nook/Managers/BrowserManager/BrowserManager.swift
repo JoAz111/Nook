@@ -1500,7 +1500,7 @@ class BrowserManager: ObservableObject {
         }
 
         if #available(macOS 13.3, *) {
-            let webView = currentTab.activeWebView
+            guard let webView = currentTab.activeWebView else { return }
 
             // Ensure the webview is inspectable (macOS 16+)
             if #available(macOS 16.0, *) {
