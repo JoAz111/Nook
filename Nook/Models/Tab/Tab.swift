@@ -212,11 +212,11 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
         return _webView
     }
 
-    var activeWebView: WKWebView {
+    var activeWebView: WKWebView? {
         if _webView == nil {
             setupWebView()
         }
-        return _webView!
+        return _webView
     }
 
     /// Returns the existing WebView without triggering lazy initialization
@@ -831,14 +831,14 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
             // Grant read access to the containing directory for local resources
             let directoryURL = newURL.deletingLastPathComponent()
             print("🔧 [Tab] Loading file URL with directory access: \(directoryURL.path)")
-            activeWebView.loadFileURL(newURL, allowingReadAccessTo: directoryURL)
+            activeWebView?.loadFileURL(newURL, allowingReadAccessTo: directoryURL)
         } else {
             // Regular URL loading with aggressive caching
             var request = URLRequest(url: newURL)
             request.cachePolicy = .returnCacheDataElseLoad
             request.timeoutInterval = 30.0
             print("🚀 [Tab] Loading URL with cache policy: \(request.cachePolicy.rawValue)")
-            activeWebView.load(request)
+            activeWebView?.load(request)
         }
 
         // Synchronize navigation across all windows that are displaying this tab
@@ -3065,7 +3065,7 @@ extension Tab: WKUIDelegate {
                     DispatchQueue.main.async {
                         if success {
                             bm.tabManager.setActiveTab(parentTab)
-                            parentTab.activeWebView.reload()
+                            parentTab.activeWebView?.reload()
                             print("🔐 [Tab] Parent tab reloaded after successful OAuth")
                         }
                     }
@@ -3216,10 +3216,10 @@ extension Tab: WKUIDelegate {
                     // Switch to parent tab
                     bm?.tabManager.setActiveTab(parentTab)
                     // Reload parent tab to pick up authenticated state
-                    parentTab.activeWebView.reload()
+                    parentTab.activeWebView?.reload()
                 }
             }
-            
+
             // Close this OAuth tab
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak bm, weak self] in
                 guard let self = self, let bm = bm else { return }
@@ -3236,7 +3236,7 @@ extension Tab: WKUIDelegate {
 
         if success {
             DispatchQueue.main.async { [weak self] in
-                self?.activeWebView.reload()
+                self?.activeWebView?.reload()
             }
         } else {
             print("🪟 [Tab] Popup OAuth authentication failed")
