@@ -185,10 +185,15 @@ struct SpacesSideBarView: View {
         .contentShape(Rectangle())
         .id(activeTabRefreshTrigger)
         .onAppear {
-            if let targetIndex = spaces.firstIndex(where: { $0.id == windowState.currentSpaceId }) {
+            if let currentId = windowState.currentSpaceId,
+               let targetIndex = spaces.firstIndex(where: { $0.id == currentId }) {
                 activeSpaceIndex = targetIndex
+                browserManager.setActiveSpace(spaces[targetIndex], in: windowState)
+            } else {
+                // No active space set yet — default to the first space
+                activeSpaceIndex = 0
+                browserManager.setActiveSpace(spaces[0], in: windowState)
             }
-            browserManager.setActiveSpace(spaces[0], in: windowState)
         }
         .onChange(of: activeSpaceIndex) { _, newIndex in
             handleSpaceIndexChange(newIndex, spaces: spaces)
