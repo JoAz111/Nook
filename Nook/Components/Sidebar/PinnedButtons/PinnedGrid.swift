@@ -126,7 +126,7 @@ struct PinnedGrid: View {
                                         icon: tab.favicon,
                                         isActive: isActive,
                                         onActivate: { browserManager.selectTab(tab, in: windowState) },
-                                        onClose: { browserManager.tabManager.removeTab(tab.id) },
+                                        onClose: { tab.unloadWebView() },
                                         onRemovePin: { browserManager.tabManager.unpinTab(tab) },
                                         onSplitRight: { browserManager.splitManager.enterSplit(with: tab, placeOn: .right, in: windowState) },
                                         onSplitLeft: { browserManager.splitManager.enterSplit(with: tab, placeOn: .left, in: windowState) }
@@ -279,11 +279,11 @@ private struct PinnedTile: View {
                 Label("Open in Split (Left)", systemImage: "rectangle.split.2x1")
             }
             Divider()
-            Button(role: .destructive, action: onClose) {
-                Label("Close tab", systemImage: "xmark")
+            Button(action: onClose) {
+                Label("Unload tab", systemImage: "xmark.circle")
             }
-            Button(action: onRemovePin) {
-                Label("Remove pinned tab", systemImage: "pin.slash")
+            Button(role: .destructive, action: onRemovePin) {
+                Label("Remove from Favorites", systemImage: "pin.slash")
             }
         }
     }
