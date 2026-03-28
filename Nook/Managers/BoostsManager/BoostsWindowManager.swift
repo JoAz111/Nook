@@ -328,39 +328,11 @@ private struct BoostWindowContent: View {
                 BoostZapButton(
                     isActive: $isZapActive,
                     onClick: {
-                        let zapScript = """
-                            (function() {
-                                const adSelectors = [
-                                    '[class*="ad"]',
-                                    '[id*="ad"]',
-                                    '[class*="advertisement"]',
-                                    '[id*="advertisement"]',
-                                    'iframe[src*="ads"]',
-                                    'iframe[src*="advertisement"]'
-                                ];
-                                
-                                adSelectors.forEach(selector => {
-                                    try {
-                                        document.querySelectorAll(selector).forEach(el => el.remove());
-                                    } catch(e) {}
-                                });
-                                
-                                const adClasses = ['ad', 'ads', 'advertisement', 'ad-banner', 'ad-container'];
-                                adClasses.forEach(className => {
-                                    try {
-                                        document.querySelectorAll('.' + className).forEach(el => el.remove());
-                                    } catch(e) {}
-                                });
-                                
-                                console.log('✅ [Nook Boost] Zap applied - ads removed');
-                            })();
-                            """
-                        
-                        if let webView = BoostsWindowManager.shared.currentWebView,
-                           let manager = BoostsWindowManager.shared.boostsManager {
-                            manager.injectJavaScript(zapScript, into: webView) { success in
-                                if success {
-                                    print("✅ [BoostsWindowManager] Zap script injected")
+                        // Inject the element picker — click an element to permanently block it
+                        if let webView = BoostsWindowManager.shared.currentWebView {
+                            webView.evaluateJavaScript(ContentBlockerManager.elementPickerJS) { _, error in
+                                if let error {
+                                    print("❌ [Boost Zap] Failed to inject element picker: \(error.localizedDescription)")
                                 }
                             }
                         }
