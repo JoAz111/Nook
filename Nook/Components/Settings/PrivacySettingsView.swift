@@ -16,6 +16,9 @@ struct PrivacySettingsView: View {
     @State private var showingCookieManager = false
     @State private var showingCacheManager = false
     @State private var isClearing = false
+    @State private var customListURL = ""
+    @State private var customListName = ""
+    @State private var showingAddCustomList = false
 
     var body: some View {
         @Bindable var settings = nookSettings
@@ -185,9 +188,43 @@ struct PrivacySettingsView: View {
                                                 .font(.caption)
                                                 .foregroundStyle(.tertiary)
                                         }
+
+                                        if list.category == .custom {
+                                            Button(action: {
+                                                browserManager.contentBlockerManager.removeCustomList(list.id)
+                                            }) {
+                                                Image(systemName: "trash")
+                                                    .foregroundStyle(.red)
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
                                     }
                                 }
                             }
+                        }
+
+                        Divider()
+
+                        // Add custom list
+                        DisclosureGroup("Add Custom List", isExpanded: $showingAddCustomList) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                TextField("List name", text: $customListName)
+                                    .textFieldStyle(.roundedBorder)
+                                TextField("Filter list URL", text: $customListURL)
+                                    .textFieldStyle(.roundedBorder)
+                                HStack {
+                                    Button("Add") {
+                                        guard let url = URL(string: customListURL),
+                                              !customListName.isEmpty else { return }
+                                        browserManager.contentBlockerManager.addCustomList(name: customListName, url: url)
+                                        customListName = ""
+                                        customListURL = ""
+                                        showingAddCustomList = false
+                                    }
+                                    .disabled(customListURL.isEmpty || customListName.isEmpty)
+                                }
+                            }
+                            .padding(.top, 4)
                         }
 
                         Divider()
