@@ -142,7 +142,9 @@ struct WindowView: View {
         .environmentObject(browserManager.gradientColorManager)
         .environmentObject(browserManager.splitManager)
         .environmentObject(hoverSidebarManager)
-        .preferredColorScheme(windowState.gradient.primaryColor.isPerceivedDark ? .dark : .light)
+        // Removed: .preferredColorScheme based on gradient was forcing dark/light mode
+        // on web content via prefers-color-scheme CSS media query. Web pages should
+        // follow the system appearance setting, not the space gradient color.
     }
 
     // MARK: - Layout Components
