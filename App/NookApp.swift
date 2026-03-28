@@ -135,9 +135,10 @@ struct NookApp: App {
         browserManager.compositorManager.setUnloadTimeout(
             settingsManager.tabUnloadTimeout
         )
-        browserManager.trackingProtectionManager.setEnabled(
+        browserManager.contentBlockerManager.setEnabled(
             settingsManager.blockCrossSiteTracking
         )
+        browserManager.contentBlockerManager.checkForUpdates()
 
         // Initialize keyboard shortcut manager
         keyboardShortcutManager.setBrowserManager(browserManager)

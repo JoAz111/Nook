@@ -149,7 +149,7 @@ struct PrivacySettingsView: View {
                     // Activated: Block cross‑site tracking via content rules + iframe cookie shim
                     Toggle("Block Cross-Site Tracking", isOn: $settings.blockCrossSiteTracking)
                         .onChange(of: nookSettings.blockCrossSiteTracking) { _, enabled in
-                            browserManager.trackingProtectionManager.setEnabled(enabled)
+                            browserManager.contentBlockerManager.setEnabled(enabled)
                         }
 
                     // Placeholders for future refinements

@@ -112,3 +112,6 @@ DerivedData/
 *.xcresult
 *.log
 *.profraw
+docs/superpowers/specs/2026-03-27-critical-bugfixes-design.md
+docs/superpowers/specs/2026-03-28-content-blocker-design.md
+docs/superpowers/plans/2026-03-28-content-blocker.md

@@ -24,13 +24,7 @@ struct TopBarView: View {
     @State private var previousTabId: UUID? = nil
 
     var body: some View {
-        let cornerRadius: CGFloat = {
-            if #available(macOS 26.0, *) {
-                return 8
-            } else {
-                return 8
-            }
-        }()
+        let cornerRadius: CGFloat = windowState.isFullScreen ? 0 : 8
 
         let currentTab = browserManager.currentTab(for: windowState)
         let hasPiPControl =

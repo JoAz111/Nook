@@ -84,7 +84,7 @@ final class AuthenticationManager: NSObject {
             return
         }
 
-        browserManager?.trackingProtectionManager.disableTemporarily(for: tab, duration: 15 * 60)
+        browserManager?.contentBlockerManager.disableTemporarily(for: tab, duration: 15 * 60)
 
         cancelActiveIdentityFlow()
 

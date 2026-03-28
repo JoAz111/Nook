@@ -241,11 +241,12 @@ struct WindowView: View {
             // Shadow shape positioned behind both top bar and webview
             // The webview will block the bottom shadow, leaving only top/left/right shadows visible
             if hasTopBar {
+                let shadowCornerRadius = windowState.isFullScreen ? 0 : cornerRadius + 1
                 UnevenRoundedRectangle(
-                    topLeadingRadius: cornerRadius + 1,
+                    topLeadingRadius: shadowCornerRadius,
                     bottomLeadingRadius: 0,
                     bottomTrailingRadius: 0,
-                    topTrailingRadius: cornerRadius + 1,
+                    topTrailingRadius: shadowCornerRadius,
                     style: .continuous
                 )
                 .frame(height: TopBarMetrics.height)
