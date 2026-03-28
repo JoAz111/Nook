@@ -642,6 +642,7 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
             _webView?.configuration.userContentController.add(self, name: "historyStateDidChange")
             _webView?.configuration.userContentController.add(self, name: "NookIdentity")
             _webView?.configuration.userContentController.add(self, name: "nookShortcutDetect")
+            _webView?.configuration.userContentController.add(self, name: "nookElementPicker")
 
             // Add Web Store integration handler for Chrome Web Store extension installs
             if let browserManager = browserManager {
@@ -1706,6 +1707,7 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
             "historyStateDidChange",
             "NookIdentity",
             "nookShortcutDetect",
+            "nookElementPicker",
         ]
 
         for handlerName in allMessageHandlers {
@@ -2917,6 +2919,16 @@ extension Tab: WKScriptMessageHandler {
             
         case "nookShortcutDetect":
             handleShortcutDetection(message: message)
+
+        case "nookElementPicker":
+            guard message.frameInfo.isMainFrame else { break }
+            if let body = message.body as? [String: Any],
+               let action = body["action"] as? String,
+               action == "blockElement",
+               let selector = body["selector"] as? String,
+               let domain = body["domain"] as? String {
+                browserManager?.contentBlockerManager.addCustomRule(domain: domain, selector: selector)
+            }
 
         default:
             break

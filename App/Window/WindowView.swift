@@ -168,6 +168,7 @@ struct WindowView: View {
     @ViewBuilder
     private func SidebarWebViewStack() -> some View {
         let aiVisible = windowState.isSidebarAIChatVisible
+        let immersiveFullScreen = windowState.isImmersiveFullScreen
         let aiAppearsOnTrailingEdge = nookSettings.sidebarPosition == .left
         let sidebarVisible = windowState.isSidebarVisible
         let sidebarOnRight = nookSettings.sidebarPosition == .right
@@ -190,8 +191,8 @@ struct WindowView: View {
         }
         // Apply padding similar to regular sidebar: remove padding when sidebar/AI is visible on that side
         // When sidebar is on left, AI appears on right (trailing); when sidebar is on right, AI appears on left (leading)
-        .padding(.trailing, windowState.isFullScreen || (sidebarVisible && sidebarOnRight) || (aiVisible && sidebarOnLeft) ? 0 : 8)
-        .padding(.leading, windowState.isFullScreen || (sidebarVisible && sidebarOnLeft) || (aiVisible && sidebarOnRight) ? 0 : 8)
+        .padding(.trailing, immersiveFullScreen || (sidebarVisible && sidebarOnRight) || (aiVisible && sidebarOnLeft) ? 0 : 8)
+        .padding(.leading, immersiveFullScreen || (sidebarVisible && sidebarOnLeft) || (aiVisible && sidebarOnRight) ? 0 : 8)
     }
 
     @ViewBuilder
@@ -216,7 +217,8 @@ struct WindowView: View {
 
     @ViewBuilder
     private func WebContent() -> some View {
-        let cornerRadius: CGFloat = windowState.isFullScreen ? 0 : 8
+        let immersiveFullScreen = windowState.isImmersiveFullScreen
+        let cornerRadius: CGFloat = immersiveFullScreen ? 0 : 8
         
         let hasTopBar = nookSettings.topBarAddressView
         
@@ -240,8 +242,8 @@ struct WindowView: View {
             
             // Shadow shape positioned behind both top bar and webview
             // The webview will block the bottom shadow, leaving only top/left/right shadows visible
-            if hasTopBar {
-                let shadowCornerRadius = windowState.isFullScreen ? 0 : cornerRadius + 1
+            if hasTopBar && !immersiveFullScreen {
+                let shadowCornerRadius = cornerRadius + 1
                 UnevenRoundedRectangle(
                     topLeadingRadius: shadowCornerRadius,
                     bottomLeadingRadius: 0,
@@ -264,7 +266,7 @@ struct WindowView: View {
                     .allowsHitTesting(false)
             }
         }
-        .padding(.bottom, windowState.isFullScreen ? 0 : 8)
+        .padding(.bottom, immersiveFullScreen ? 0 : 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

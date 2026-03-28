@@ -91,6 +91,12 @@ class BrowserWindowState {
     /// Whether this window is currently in macOS fullscreen mode
     var isFullScreen: Bool = false
 
+    /// Whether fullscreen should collapse all outer chrome and insets.
+    /// We only go fully edge-to-edge when both sidebars are hidden.
+    var isImmersiveFullScreen: Bool {
+        isFullScreen && !isSidebarVisible && !isSidebarAIChatVisible
+    }
+
     /// Whether this window is an incognito/private browsing window
     var isIncognito: Bool = false
     

@@ -61,6 +61,7 @@ struct SpacesSideBarView: View {
         let effectiveProfileId = windowState.currentProfileId ?? browserManager.currentProfile?.id
         let essentialsCount = effectiveProfileId.map { browserManager.tabManager.essentialTabs(for: $0).count } ?? 0
         let shouldAnimate = (windowRegistry.activeWindow?.id == windowState.id) && !browserManager.isTransitioningProfile
+        let verticalWindowPadding: CGFloat = windowState.isImmersiveFullScreen ? 0 : 8
 
         return VStack(spacing: 8) {
             // Header (window controls, nav buttons, URL bar)
@@ -121,8 +122,8 @@ struct SpacesSideBarView: View {
             .environmentObject(browserManager)
             .environment(windowState)
         }
-        .padding(.top, 8)
-        .padding(.bottom, 8)
+        .padding(.top, verticalWindowPadding)
+        .padding(.bottom, verticalWindowPadding)
         .background(
             GeometryReader { geo in
                 Color.clear

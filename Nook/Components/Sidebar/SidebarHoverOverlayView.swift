@@ -16,11 +16,11 @@ struct SidebarHoverOverlayView: View {
     @Environment(CommandPalette.self) private var commandPalette
     @Environment(\.nookSettings) var nookSettings
 
-    private let cornerRadius: CGFloat = 12
-    private let horizontalInset: CGFloat = 7
-    private let verticalInset: CGFloat = 7
-
     var body: some View {
+        let cornerRadius: CGFloat = windowState.isImmersiveFullScreen ? 0 : 12
+        let horizontalInset: CGFloat = windowState.isImmersiveFullScreen ? 0 : 7
+        let verticalInset: CGFloat = windowState.isImmersiveFullScreen ? 0 : 7
+
         // Only render overlay plumbing when the real sidebar is collapsed
         if !windowState.isSidebarVisible {
             ZStack(alignment: nookSettings.sidebarPosition == .left ? .leading : .trailing) {

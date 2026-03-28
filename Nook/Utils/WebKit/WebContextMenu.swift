@@ -177,6 +177,8 @@ enum WebContextMenuItem {
 
     case separator
 
+    case blockElement
+
     case systemLookUp
     case systemTranslate
     case systemShare
@@ -196,11 +198,11 @@ enum WebContextMenuItem {
     private static func content(for payload: WebContextMenuPayload) -> [WebContextMenuItem] {
         switch payload {
         case .page:
-            return [.pageBack, .pageForward, .pageReload, .separator, .pageCopyAddress, .separator, .systemInspect]
+            return [.pageBack, .pageForward, .pageReload, .separator, .pageCopyAddress, .separator, .blockElement, .separator, .systemInspect]
         case .textSelection:
-            return [.systemLookUp, .systemTranslate, .textCopy, .separator, .systemShare, .separator, .systemInspect]
+            return [.systemLookUp, .systemTranslate, .textCopy, .separator, .systemShare, .separator, .blockElement, .separator, .systemInspect]
         case .link:
-            return [.linkOpenInNewTab, .separator, .linkCopy, .separator, .systemShare, .separator, .systemInspect]
+            return [.linkOpenInNewTab, .separator, .linkCopy, .separator, .systemShare, .separator, .blockElement, .separator, .systemInspect]
         case .image:
             return [
                 .imageOpenInNewTab,
@@ -281,6 +283,7 @@ enum WebContextMenuItem {
         case .imageSaveAs: return "Save Image As..."
         case .imageCopyAddress: return "Copy Image Address"
         case .textCopy: return "Copy"
+        case .blockElement: return "Block Element..."
         case .separator, .systemLookUp, .systemTranslate, .systemShare, .systemInspect, .systemImageCopy:
             return nil
         }
@@ -346,6 +349,13 @@ enum WebContextMenuItem {
             if let text = payload.textSelection {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(text, forType: .string)
+            }
+        case .blockElement:
+            // Inject the element picker JS into the current page
+            webView.evaluateJavaScript(ContentBlockerManager.elementPickerJS) { _, error in
+                if let error {
+                    print("[BlockElement] Failed to inject picker: \(error.localizedDescription)")
+                }
             }
         default:
             break

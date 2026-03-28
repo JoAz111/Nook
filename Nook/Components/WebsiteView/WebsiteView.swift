@@ -175,7 +175,11 @@ struct WebsiteView: View {
     private let dragCoordinateSpace = "splitPreview"
 
     private var cornerRadius: CGFloat {
-        windowState.isFullScreen ? 0 : 8
+        windowState.isImmersiveFullScreen ? 0 : 8
+    }
+
+    private var webViewShadowOpacity: Double {
+        windowState.isImmersiveFullScreen ? 0 : 0.3
     }
     
     private var webViewClipShape: AnyShape {
@@ -213,7 +217,7 @@ struct WebsiteView: View {
                         .background(shouldShowSplit ? Color.clear : Color(nsColor: .windowBackgroundColor))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipShape(webViewClipShape)
-                        .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 0)
+                        .shadow(color: Color.black.opacity(webViewShadowOpacity), radius: 4, x: 0, y: 0)
                         // Critical: Use allowsHitTesting to prevent SwiftUI from intercepting mouse events
                         // This allows right-clicks to pass through to the underlying NSView (WKWebView)
                         .allowsHitTesting(true)
@@ -703,7 +707,7 @@ struct TabCompositorWrapper: NSViewRepresentable {
     }
 
     private func makePaneContainer(frame: NSRect, isActive: Bool, accent: NSColor, side: SplitViewManager.Side) -> NSView {
-        let cornerRadius: CGFloat = windowState.isFullScreen ? 0 : 8
+        let cornerRadius: CGFloat = windowState.isImmersiveFullScreen ? 0 : 8
         
         let v = NSView(frame: frame)
         v.wantsLayer = true

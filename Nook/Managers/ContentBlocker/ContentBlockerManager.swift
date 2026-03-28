@@ -29,6 +29,7 @@ final class ContentBlockerManager {
 
     func attach(browserManager: BrowserManager) {
         self.browserManager = browserManager
+        loadCustomRules()
     }
 
     // MARK: - Filter list state
@@ -512,4 +513,195 @@ final class ContentBlockerManager {
     private func saveAllowedDomains() {
         UserDefaults.standard.set(Array(allowedDomains), forKey: Self.allowedDomainsKey)
     }
+
+    // MARK: - Element Picker
+
+    private static let customRulesKey = "contentBlocker.customRules"
+    private static let customRulesListId = "nook-custom-rules"
+
+    /// Per-domain custom CSS selectors to hide (user-picked elements)
+    private(set) var customRules: [String: [String]] = [:]  // domain → [selector]
+
+    func loadCustomRules() {
+        if let data = UserDefaults.standard.data(forKey: Self.customRulesKey),
+           let decoded = try? JSONDecoder().decode([String: [String]].self, from: data) {
+            customRules = decoded
+        }
+    }
+
+    private func saveCustomRules() {
+        if let data = try? JSONEncoder().encode(customRules) {
+            UserDefaults.standard.set(data, forKey: Self.customRulesKey)
+        }
+    }
+
+    /// Add a user-picked element hiding rule and recompile
+    func addCustomRule(domain: String, selector: String) {
+        let norm = domain.lowercased()
+        var selectors = customRules[norm] ?? []
+        guard !selectors.contains(selector) else { return }
+        selectors.append(selector)
+        customRules[norm] = selectors
+        saveCustomRules()
+        Task { @MainActor in
+            await compileCustomRules()
+            if isEnabled {
+                rebuildSharedConfiguration()
+                applyToExistingWebViews()
+            }
+        }
+    }
+
+    /// Remove a specific custom rule
+    func removeCustomRule(domain: String, selector: String) {
+        let norm = domain.lowercased()
+        customRules[norm]?.removeAll { $0 == selector }
+        if customRules[norm]?.isEmpty == true { customRules.removeValue(forKey: norm) }
+        saveCustomRules()
+        Task { @MainActor in
+            await compileCustomRules()
+            if isEnabled {
+                rebuildSharedConfiguration()
+                applyToExistingWebViews()
+            }
+        }
+    }
+
+    /// Compile all custom rules into a single WKContentRuleList
+    private func compileCustomRules() async {
+        var rules: [[String: Any]] = []
+        for (domain, selectors) in customRules {
+            for selector in selectors {
+                rules.append([
+                    "trigger": [
+                        "url-filter": ".*",
+                        "if-domain": ["*\(domain)"]
+                    ] as [String: Any],
+                    "action": [
+                        "type": "css-display-none",
+                        "selector": selector
+                    ]
+                ])
+            }
+        }
+
+        if rules.isEmpty {
+            compiledLists.removeValue(forKey: Self.customRulesListId)
+            if let store = WKContentRuleListStore.default() {
+                store.removeContentRuleList(forIdentifier: Self.customRulesListId) { _ in }
+            }
+            return
+        }
+
+        guard let data = try? JSONSerialization.data(withJSONObject: rules),
+              let json = String(data: data, encoding: .utf8),
+              let store = WKContentRuleListStore.default() else { return }
+
+        let compiled = await withCheckedContinuation { (cont: CheckedContinuation<WKContentRuleList?, Never>) in
+            store.compileContentRuleList(forIdentifier: Self.customRulesListId, encodedContentRuleList: json) { list, error in
+                if let error { print("[ContentBlocker] Custom rules compile error: \(error.localizedDescription)") }
+                cont.resume(returning: list)
+            }
+        }
+        if let compiled {
+            compiledLists[Self.customRulesListId] = compiled
+        }
+    }
+
+    /// JS source for the element picker overlay
+    static let elementPickerJS: String = """
+    (function() {
+        if (window.__nookElementPicker) { window.__nookElementPicker.destroy(); }
+
+        var overlay = null;
+        var selectedEl = null;
+
+        function getSelector(el) {
+            if (el.id) return '#' + CSS.escape(el.id);
+            var path = [];
+            while (el && el !== document.body && el !== document.documentElement) {
+                var sel = el.tagName.toLowerCase();
+                if (el.className && typeof el.className === 'string') {
+                    var classes = el.className.trim().split(/\\s+/).filter(function(c) { return c.length > 0; });
+                    if (classes.length > 0) {
+                        sel += '.' + classes.map(function(c) { return CSS.escape(c); }).join('.');
+                    }
+                }
+                // Check if selector is unique at this level
+                var matches = el.parentElement ? el.parentElement.querySelectorAll(':scope > ' + sel) : [el];
+                if (matches.length > 1) {
+                    var idx = Array.from(el.parentElement.children).indexOf(el) + 1;
+                    sel += ':nth-child(' + idx + ')';
+                }
+                path.unshift(sel);
+                // If this selector is already unique in the document, stop
+                if (document.querySelectorAll(path.join(' > ')).length === 1) break;
+                el = el.parentElement;
+            }
+            return path.join(' > ');
+        }
+
+        function createOverlay() {
+            overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;border:2px solid #ff4444;background:rgba(255,0,0,0.15);transition:all 0.05s ease;display:none;';
+            document.documentElement.appendChild(overlay);
+        }
+
+        function onMouseMove(e) {
+            var el = document.elementFromPoint(e.clientX, e.clientY);
+            if (!el || el === overlay || el === document.documentElement || el === document.body) {
+                overlay.style.display = 'none';
+                selectedEl = null;
+                return;
+            }
+            selectedEl = el;
+            var rect = el.getBoundingClientRect();
+            overlay.style.left = rect.left + 'px';
+            overlay.style.top = rect.top + 'px';
+            overlay.style.width = rect.width + 'px';
+            overlay.style.height = rect.height + 'px';
+            overlay.style.display = 'block';
+        }
+
+        function onClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!selectedEl) return;
+            var selector = getSelector(selectedEl);
+            var domain = location.hostname;
+            // Send to native
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nookElementPicker) {
+                window.webkit.messageHandlers.nookElementPicker.postMessage({
+                    action: 'blockElement',
+                    selector: selector,
+                    domain: domain
+                });
+            }
+            // Immediately hide the element for visual feedback
+            selectedEl.style.display = 'none';
+            destroy();
+        }
+
+        function onKeyDown(e) {
+            if (e.key === 'Escape') { destroy(); }
+        }
+
+        function destroy() {
+            document.removeEventListener('mousemove', onMouseMove, true);
+            document.removeEventListener('click', onClick, true);
+            document.removeEventListener('keydown', onKeyDown, true);
+            if (overlay && overlay.parentElement) overlay.parentElement.removeChild(overlay);
+            overlay = null;
+            selectedEl = null;
+            window.__nookElementPicker = null;
+        }
+
+        createOverlay();
+        document.addEventListener('mousemove', onMouseMove, true);
+        document.addEventListener('click', onClick, true);
+        document.addEventListener('keydown', onKeyDown, true);
+
+        window.__nookElementPicker = { destroy: destroy };
+    })();
+    """
 }
