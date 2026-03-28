@@ -665,6 +665,12 @@ public class Tab: NSObject, Identifiable, ObservableObject, WKDownloadDelegate {
             // (like Dark Reader) can paint dark backgrounds. The app's themed
             // background is only visible while the page is loading.
             _webView?.setValue(true, forKey: "drawsBackground")
+
+            // Force the WebView to match the system appearance setting, not the
+            // window's effective appearance (which may be dark due to space gradient).
+            // This ensures prefers-color-scheme reports the user's actual system preference.
+            let systemIsDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            _webView?.appearance = NSAppearance(named: systemIsDark ? .darkAqua : .aqua)
         }
 
         if let webView = _webView {
