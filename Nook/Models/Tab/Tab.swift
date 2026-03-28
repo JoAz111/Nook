@@ -3495,8 +3495,10 @@ extension Tab: WKUIDelegate {
             "🔐 [Tab] Media capture authorization requested for type: \(type.rawValue) from origin: \(origin)"
         )
 
-        // SECURITY: Prompt the user for per-site camera/mic consent instead of auto-granting
-        decisionHandler(.prompt)
+        // SECURITY: Deny camera/mic by default until proper entitlements and
+        // NSCameraUsageDescription/NSMicrophoneUsageDescription are added to Info.plist.
+        // Using .prompt without these keys causes a crash.
+        decisionHandler(.deny)
     }
 }
 
