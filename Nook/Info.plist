@@ -18,6 +18,10 @@
 	</array>
 	<key>LSHandlerRank</key>
 	<string>Owner</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Nook needs access to your camera for video calls and other web features.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Nook needs access to your microphone for voice and video calls.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoadsInWebContent</key>
