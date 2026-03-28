@@ -52,7 +52,7 @@ final class ContentBlockerManager {
 
     // MARK: - Init
 
-    private init() {
+    init() {
         loadMetadata()
         loadAllowedDomains()
     }
