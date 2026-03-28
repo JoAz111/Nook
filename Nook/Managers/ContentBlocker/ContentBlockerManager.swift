@@ -526,6 +526,12 @@ final class ContentBlockerManager {
         if let data = UserDefaults.standard.data(forKey: Self.customRulesKey),
            let decoded = try? JSONDecoder().decode([String: [String]].self, from: data) {
             customRules = decoded
+            // Compile persisted custom rules so they're active on launch
+            if !customRules.isEmpty {
+                Task { @MainActor in
+                    await compileCustomRules()
+                }
+            }
         }
     }
 
