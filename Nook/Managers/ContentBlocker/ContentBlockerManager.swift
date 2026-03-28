@@ -554,6 +554,14 @@ final class ContentBlockerManager {
             if isEnabled {
                 rebuildSharedConfiguration()
                 applyToExistingWebViews()
+                // Reload tabs on this domain so the new css-display-none rule takes effect
+                if let bm = browserManager {
+                    for tab in bm.tabManager.allTabs() {
+                        if tab.webView?.url?.host?.lowercased() == norm {
+                            tab.webView?.reloadFromOrigin()
+                        }
+                    }
+                }
             }
         }
     }
