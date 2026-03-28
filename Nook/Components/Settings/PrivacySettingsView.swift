@@ -140,23 +140,65 @@ struct PrivacySettingsView: View {
             
             Divider()
             
-            // Privacy Controls Section
+            // Content Blocker Section
             VStack(alignment: .leading, spacing: 12) {
-                Text("Privacy Controls")
-                    .font(.headline)
+                HStack {
+                    Text("Content Blocker")
+                        .font(.headline)
+                    Spacer()
+                    if browserManager.contentBlockerManager.isEnabled {
+                        Text("\(browserManager.contentBlockerManager.totalRuleCount) rules across \(browserManager.contentBlockerManager.enabledListCount) lists")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    // Activated: Block cross‑site tracking via content rules + iframe cookie shim
-                    Toggle("Block Cross-Site Tracking", isOn: $settings.blockCrossSiteTracking)
+                    Toggle("Enable Content Blocker", isOn: $settings.blockCrossSiteTracking)
                         .onChange(of: nookSettings.blockCrossSiteTracking) { _, enabled in
                             browserManager.contentBlockerManager.setEnabled(enabled)
                         }
 
-                    // Placeholders for future refinements
-                    Toggle("Block Third-Party Cookies", isOn: .constant(false))
-                        .disabled(true)
-                    Toggle("Prevent Cross-Site Tracking (ITP)", isOn: .constant(false))
-                        .disabled(true)
+                    if nookSettings.blockCrossSiteTracking {
+                        Divider()
+
+                        // Filter lists grouped by category
+                        ForEach(FilterList.Category.allCases, id: \.self) { category in
+                            let listsInCategory = browserManager.contentBlockerManager.filterLists.filter { $0.category == category }
+                            if !listsInCategory.isEmpty {
+                                Text(category.displayName)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top, 4)
+
+                                ForEach(listsInCategory) { list in
+                                    HStack {
+                                        Toggle(list.name, isOn: Binding(
+                                            get: { list.isEnabled },
+                                            set: { browserManager.contentBlockerManager.setListEnabled(list.id, enabled: $0) }
+                                        ))
+
+                                        Spacer()
+
+                                        if let count = list.ruleCount {
+                                            Text("\(count) rules")
+                                                .font(.caption)
+                                                .foregroundStyle(.tertiary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Divider()
+
+                        HStack {
+                            Button("Update All Now") {
+                                browserManager.contentBlockerManager.forceUpdateAll()
+                            }
+                            Spacer()
+                        }
+                    }
                 }
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
